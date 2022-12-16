@@ -148,12 +148,6 @@ with dpg.window(tag="Primary Window"):
                 dpg.add_input_text(tag="tableBPM"+str(rowNum), decimal=True, width=40)
                 dpg.add_input_text(tag="tableLength"+str(rowNum), decimal=True, width=40)
                 dpg.add_input_text(tag="tableSig"+str(rowNum), decimal=True, width=40, default_value=4)
-                
-            #for rowNum in range(6):
-            #    with dpg.table_row():                   
-            #        dpg.add_input_text(tag="tableBPM"+str(rowNum), decimal=True, width=40)
-            #        dpg.add_input_text(tag="tableLength"+str(rowNum), decimal=True, width=40)
-            #        dpg.add_input_text(tag="tableSig"+str(rowNum), decimal=True, width=40, default_value=4)
                     
         dpg.add_button(label="add row", callback=addScheduleRow,tag="addRowButton")
 
