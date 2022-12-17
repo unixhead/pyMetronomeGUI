@@ -13,12 +13,12 @@ import simpleaudio, time
 
 metronomeRunning = False
 scheduleMetronomeRunning = False
-currentSchedule = 1
+currentSchedule = 0
 
 metronomeCount = 0
 metronomeTimeSig = 4
 timerStart = 0
-scheduleRows = 1
+scheduleRows = 0
 last = 0
 
 strongBeat = simpleaudio.WaveObject.from_wave_file('strong_beat.wav')
@@ -66,6 +66,7 @@ def startSchedule():
     timerStart = get_time_ms()
     currentTimerStart = get_time_ms()
 
+
 def stopSchedule():
     #debugLog("StopSchedule")
     global scheduleMetronomeRunning, currentSchedule
@@ -74,14 +75,27 @@ def stopSchedule():
 
 def addScheduleRow():
     global scheduleRows
-    #debugLog("adding row: " + str(scheduleRows))
+    #debugLog("adding row: " + str(scheduleRows+1))
+    scheduleRows = scheduleRows + 1
     rowNum = scheduleRows
-    with dpg.table_row(parent="scheduleTable"):
+    with dpg.table_row(parent="scheduleTable",  tag="tableRow"+str(rowNum)):
         dpg.add_input_text(tag="tableBPM"+str(rowNum), decimal=True, width=40)
         dpg.add_input_text(tag="tableLength"+str(rowNum), decimal=True, width=40)
         dpg.add_input_text(tag="tableSig"+str(rowNum), decimal=True, width=40, default_value=4)
 
-    scheduleRows = scheduleRows + 1
+    
+
+
+def delScheduleRow():
+    global scheduleRows
+    #debugLog("delete rows: " + str(scheduleRows))
+    if scheduleRows == 0:
+        #debugLog("freturning false")
+        return False
+    
+    dpg.delete_item("tableRow"+str(scheduleRows))
+    scheduleRows = scheduleRows - 1
+    
 
 last = get_time_ms()
 
@@ -148,12 +162,14 @@ with dpg.window(tag="Primary Window"):
                 dpg.add_input_text(tag="tableBPM"+str(rowNum), decimal=True, width=40)
                 dpg.add_input_text(tag="tableLength"+str(rowNum), decimal=True, width=40)
                 dpg.add_input_text(tag="tableSig"+str(rowNum), decimal=True, width=40, default_value=4)
-                    
+                     
         dpg.add_button(label="add row", callback=addScheduleRow,tag="addRowButton")
+        dpg.add_button(label="del row", callback=delScheduleRow,tag="delRowButton")
+        schedButtonGroup = dpg.add_group(horizontal=True)
+        dpg.move_item("addRowButton", parent=schedButtonGroup)
+        dpg.move_item("delRowButton", parent=schedButtonGroup)
 
-
-
-        # timer
+        # BPM
         dpg.add_text("BPM:", tag="scheduleCurrentBPMText")
         dpg.add_input_text( default_value="0",  tag="scheduleCurrentBPMValue", width=100, indent=50, readonly=True)
         scheduleCurrentBPMGroup = dpg.add_group(horizontal=True)
@@ -244,7 +260,7 @@ while dpg.is_dearpygui_running():
         sigVal = dpg.get_value("tableSig"+str(currentSchedule))
         
         if bpmVal == "":
-            print("empty bpm, stopping")
+            #print("empty bpm, stopping")
             stopSchedule()
             finished = True
 
@@ -253,12 +269,12 @@ while dpg.is_dearpygui_running():
             dpg.set_value("scheduleCurrentBPMValue", bpmVal)
             
         except:
-            debugLog("Ran out of lines, ending")
+            #debugLog("Ran out of lines, ending")
             stopSchedule()
            
 
         if timeVal == "":
-            print("empty time, stopping")
+            #debugLog("empty time, stopping")
             stopSchedule()
             
 
