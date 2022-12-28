@@ -71,6 +71,18 @@ def stopSchedule():
     #debugLog("StopSchedule")
     global scheduleMetronomeRunning, currentSchedule
     scheduleMetronomeRunning = False
+    i = 0
+    try:
+        #blank all "Active" fields and set plain colour
+        
+        while (i <= scheduleRows):
+            dpg.set_value("tableActive"+str(i),"")
+            dpg.highlight_table_cell(metro_table_id, i, 3, [0, 0, 0, 0])
+            i=i+1
+    except:
+        #do nowt
+        time.sleep(0.001)
+        debugLog("failed at " + str(i))
     currentSchedule = 0
 
 def addScheduleRow():
@@ -82,7 +94,8 @@ def addScheduleRow():
         dpg.add_input_text(tag="tableBPM"+str(rowNum), decimal=True, width=40)
         dpg.add_input_text(tag="tableLength"+str(rowNum), decimal=True, width=40)
         dpg.add_input_text(tag="tableSig"+str(rowNum), decimal=True, width=40, default_value=4)
-
+        dpg.add_text("",tag="tableActive"+str(rowNum))
+        
     
 
 
@@ -108,6 +121,10 @@ dpg.create_context()
 with dpg.font_registry():
     default_font = dpg.add_font("SourceSans3-Regular.otf", 20)
 
+
+with dpg.theme() as green_bg_theme:
+    with dpg.theme_component(dpg.mvAll):
+        dpg.add_theme_color(dpg.mvThemeCol_FrameBg, (0, 153, 0), category=dpg.mvThemeCat_Core)
 
 with dpg.window(tag="Primary Window"):
     dpg.bind_font(default_font)
@@ -151,17 +168,18 @@ with dpg.window(tag="Primary Window"):
 
     dpg.add_tab_bar()
     with dpg.collapsing_header(label="Schedule Metronome"):
-        with dpg.table(tag="scheduleTable",header_row=True, borders_innerH=True, borders_outerH=True, borders_innerV=True, borders_outerV=True, width=300):
+        with dpg.table(tag="scheduleTable",header_row=True, borders_innerH=True, borders_outerH=True, borders_innerV=True, borders_outerV=True, width=300) as metro_table_id:
             dpg.add_table_column(label="BPM", width=20,  width_fixed=True)
             dpg.add_table_column(label="Length(s)", width=40,  width_fixed=True)
             dpg.add_table_column(label="Signature", width=40,  width_fixed=True)
-            
+            dpg.add_table_column(label="Active", width=40,  width_fixed=True)
             
             rowNum = 0
             with dpg.table_row(): 
                 dpg.add_input_text(tag="tableBPM"+str(rowNum), decimal=True, width=40)
                 dpg.add_input_text(tag="tableLength"+str(rowNum), decimal=True, width=40)
                 dpg.add_input_text(tag="tableSig"+str(rowNum), decimal=True, width=40, default_value=4)
+                dpg.add_text("",tag="tableActive"+str(rowNum))
                      
         dpg.add_button(label="add row", callback=addScheduleRow,tag="addRowButton")
         dpg.add_button(label="del row", callback=delScheduleRow,tag="delRowButton")
@@ -216,9 +234,6 @@ while dpg.is_dearpygui_running():
         now = get_time_ms()
 
         # update timerValue with gap * 1000
-        lastTimerValue = int(dpg.get_value("timerValue"))
-
-        #timerStart
         currentTimerValue = int((now - timerStart) / 1000)
         dpg.set_value("timerValue", currentTimerValue)
 
@@ -247,18 +262,26 @@ while dpg.is_dearpygui_running():
 
         #sort timer
         now = get_time_ms()
-        # update timerValue with gap * 1000
-        lastTimerValue = int(dpg.get_value("scheduleTimerValue"))
-
-        #timerStart
-        currentTimerValue = int((now - timerStart) / 1000)
-        dpg.set_value("scheduleTimerValue", currentTimerValue)
+      
 
         #currentSchedule, timerStart
         bpmVal = dpg.get_value("tableBPM"+str(currentSchedule))
         timeVal = dpg.get_value("tableLength"+str(currentSchedule))
         sigVal = dpg.get_value("tableSig"+str(currentSchedule))
         
+
+        # set overall timer
+        currentTimerValue = int((now - timerStart) / 1000)
+
+        # set time current schedule is running:
+        currentRunTime = int((now - currentTimerStart) / 1000)+1
+        dpg.set_value("scheduleTimerValue", str(currentTimerValue))
+
+        try:
+            dpg.set_value("tableActive"+str(currentSchedule),str(currentRunTime))
+        except:
+            stopSchedule()
+
         if bpmVal == "":
             #print("empty bpm, stopping")
             stopSchedule()
@@ -286,6 +309,12 @@ while dpg.is_dearpygui_running():
         if gap > scheduleMetronomeInterval: # BEEP !
             #strongBeat.play()
             try:
+                #set active column green
+                dpg.highlight_table_cell(metro_table_id, currentSchedule, 3, [0, 150, 0, 100])
+                #unset prevoius active column
+                if currentSchedule > 0:
+                    dpg.highlight_table_cell(metro_table_id, currentSchedule-1, 3, [0, 0, 0, 0])
+                    dpg.set_value("tableActive"+str(currentSchedule-1),"")
 
                 if metronomeCount % int(sigVal) == 0:
                     strongBeat.play()
