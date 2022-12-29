@@ -227,8 +227,12 @@ while dpg.is_dearpygui_running():
 
     #simple metronome 
     if metronomeRunning == True:
-        metronomeBPM = int(dpg.get_value("bpmValue"))
-        metronomeInterval = int((60/metronomeBPM)*1000)
+        try:
+            metronomeBPM = int(dpg.get_value("bpmValue"))
+            metronomeInterval = int((60/metronomeBPM)*1000)
+        except:
+            metronomeRunning = False
+            next
 
         #debugLog("Metronome running")
         # check if interval has passed
