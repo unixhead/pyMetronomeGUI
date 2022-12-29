@@ -41,7 +41,13 @@ def startBPM(sender, app_data):
     global metronomeRunning, metronomeCount, metronomeTimeSig, timerStart
     metronomeCount = 0
     metronomeRunning = True
-    metronomeTimeSig = int(dpg.get_value("timeSigValue"))
+    try:
+        metronomeTimeSig = int(dpg.get_value("timeSigValue"))
+    except:
+        metronomeTimeSig = 4
+        dpg.configure_item("timeSigValue", default_value="4")
+    # set sig to r/o
+    dpg.configure_item("timeSigValue", readonly=True)
     timerStart = get_time_ms()
 
 
@@ -50,6 +56,7 @@ def stopBPM(sender, app_data):
     global metronomeRunning
     metronomeRunning = False
     dpg.set_value("timerValue", "0") 
+    dpg.configure_item("timeSigValue", readonly=False)
 
 
 def renderCallback():
@@ -143,7 +150,7 @@ with dpg.window(tag="Primary Window"):
 
         # time signature
         dpg.add_text("Sig:", tag="sigText")
-        dpg.add_input_text( default_value="4",  tag="timeSigValue", width=100, indent=50, readonly=True)
+        dpg.add_input_text( default_value="4",  tag="timeSigValue", width=100, indent=50)
         sigGroup = dpg.add_group(horizontal=True)
         dpg.move_item("sigText", parent=sigGroup)
         dpg.move_item("timeSigValue", parent=sigGroup)
@@ -227,11 +234,10 @@ while dpg.is_dearpygui_running():
 
     #simple metronome 
     if metronomeRunning == True:
-        try:
+        try: # try this because if the user is changing the field then it might be empty
             metronomeBPM = int(dpg.get_value("bpmValue"))
             metronomeInterval = int((60/metronomeBPM)*1000)
-        except:
-            metronomeRunning = False
+        except:            
             next
 
         #debugLog("Metronome running")
