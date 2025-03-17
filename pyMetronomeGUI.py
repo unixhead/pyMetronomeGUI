@@ -6,23 +6,34 @@
 # Created for messing around with drumming
 
 #sudo apt-get install -y python3-dev libasound2-dev
-#pip install dearpygui simpleaudio
+#pip install dearpygui playsound
 
-import simpleaudio, time
+import playsound
+import time
+import sys
+import os
 
 
 metronomeRunning = False
 scheduleMetronomeRunning = False
+automationMetronomeRunning = False
 currentSchedule = 0
 
+metronomeBPMincrease = 10
+metronomeBPMIncreaseBars = 4
 metronomeCount = 0
 metronomeTimeSig = 4
 timerStart = 0
 scheduleRows = 0
 last = 0
+metronomeBars = 0
 
-strongBeat = simpleaudio.WaveObject.from_wave_file('strong_beat.wav')
-weakBeat = simpleaudio.WaveObject.from_wave_file('weak_beat.wav')
+
+
+def resource_path(relative_path):
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.abspath("."), relative_path)
 
 
 #print any debug info text into console
@@ -38,6 +49,12 @@ def startBPM(sender, app_data):
     #debugLog("startBPM:" + str(dpg.get_value("bpmValue")))
     if scheduleMetronomeRunning == True:
         return False
+    if automationMetronomeRunning == True:
+        return False
+    
+    dpg.configure_item("Schedule Header", default_open=False)
+    dpg.configure_item("Automation Header", default_open=False)
+
     global metronomeRunning, metronomeCount, metronomeTimeSig, timerStart
     metronomeCount = 0
     metronomeRunning = True
@@ -66,6 +83,12 @@ def startSchedule():
     #debugLog("StartSchedule")
     if metronomeRunning == True:
         return False
+    if automationMetronomeRunning == True:
+        return False
+ 
+    dpg.configure_item("Basic Header", default_open=False)
+    dpg.configure_item("Automation Header", default_open=False)
+
     global scheduleMetronomeRunning, currentSchedule, timerStart, currentTimerStart, metronomeCount
     metronomeCount = 0
     scheduleMetronomeRunning = True
@@ -91,6 +114,71 @@ def stopSchedule():
         time.sleep(0.001)
         debugLog("failed at " + str(i))
     currentSchedule = 0
+
+
+def startAutomation():
+    #debugLog("start automation")
+    if metronomeRunning == True:
+        return False
+    
+    if scheduleMetronomeRunning == True:
+        return False
+        
+    
+    dpg.configure_item("Basic Header", default_open=False)
+    dpg.configure_item("Schedule Header", default_open=False)
+
+    global automationMetronomeRunning, metronomeCount, metronomeTimeSig, timerStart, metronomeBPMincrease, metronomeBPMIncreaseBars, metronomeBPM, metronomeBars
+    
+    metronomeCount = 0
+    metronomeBars = 0
+    
+    try:
+        metronomeTimeSig = int(dpg.get_value("automationTimeSigValue"))
+    except:
+        metronomeTimeSig = 4
+        dpg.configure_item("automationTimeSigValue", default_value="4")
+
+    # set current bpm
+    metronomeBPM = int(dpg.get_value("automationbpmValue"))
+    # set sig to r/o
+    dpg.configure_item("automationTimeSigValue", readonly=True)
+    # set bpm to r/o
+    dpg.configure_item("automationbpmValue", readonly=True)
+
+
+    timerStart = get_time_ms()
+
+    try:
+        metronomeBPMincrease = int(dpg.get_value("automationIncreaseBPMValue"))
+    except:
+        metronomeBPMincrease = 10
+        dpg.configure_item("automationIncreaseBPMValue", default_value="10")
+
+
+    try:
+        metronomeBPMIncreaseBars = int(dpg.get_value("automationIncreaseBarsValue"))
+    except:
+        metronomeBPMIncreaseBars = 4
+        dpg.configure_item("automationIncreaseBarsValue", default_value="4")
+
+
+    
+
+    #debugLog("metronomeTimeSig: " + str(metronomeTimeSig) + "\nmetronomeBPM: " + str(metronomeBPM) + "\nmetronomeBPMincrease: " + str(metronomeBPMincrease) + "\nmetronomeBPMIncreaseBars: " + str(metronomeBPMIncreaseBars))
+    automationMetronomeRunning = True
+
+
+
+def stopAutomation():
+    #debugLog("stop automation")
+    global automationMetronomeRunning
+    automationMetronomeRunning = False
+    # set sig to r/w
+    dpg.configure_item("automationbpmValue", readonly=False)
+    # set bpm to r/w
+    dpg.configure_item("automationbpmValue", readonly=False)
+    
 
 def addScheduleRow():
     global scheduleRows
@@ -126,7 +214,7 @@ dpg.create_context()
 # Uses open Sans font from https://github.com/adobe-fonts/source-sans
 # License for this font: https://github.com/adobe-fonts/source-sans/blob/release/LICENSE.md
 with dpg.font_registry():
-    default_font = dpg.add_font("SourceSans3-Regular.otf", 20)
+    default_font = dpg.add_font(resource_path("SourceSans3-Regular.otf"), 20)
 
 
 with dpg.theme() as green_bg_theme:
@@ -138,7 +226,7 @@ with dpg.window(tag="Primary Window"):
 
 
     dpg.add_tab_bar()
-    with dpg.collapsing_header(label="Basic Metronome Timer", default_open=True):
+    with dpg.collapsing_header(label="Basic Metronome Timer", tag="Basic Header", default_open=True):
 
         ## metronome
         #  input box to set bpm
@@ -174,7 +262,7 @@ with dpg.window(tag="Primary Window"):
 
 
     dpg.add_tab_bar()
-    with dpg.collapsing_header(label="Schedule Metronome"):
+    with dpg.collapsing_header(label="Schedule Metronome", tag="Schedule Header", default_open=False):
         with dpg.table(tag="scheduleTable",header_row=True, borders_innerH=True, borders_outerH=True, borders_innerV=True, borders_outerV=True, width=300) as metro_table_id:
             dpg.add_table_column(label="BPM", width=20,  width_fixed=True)
             dpg.add_table_column(label="Length(s)", width=40,  width_fixed=True)
@@ -219,6 +307,48 @@ with dpg.window(tag="Primary Window"):
         dpg.move_item("startScheduleButton", parent=buttonScheduleGroup)
         dpg.move_item("stopScheduleButton", parent=buttonScheduleGroup)
 
+
+    dpg.add_tab_bar()
+    with dpg.collapsing_header(label="Automation", tag="Automation Header", default_open=False):
+        
+        #  input box to set bpm
+        dpg.add_text("BPM:", tag="automationbpmText")
+        dpg.add_input_text( default_value="100",  tag="automationbpmValue", width=100, indent=50)
+        automationbpmGroup = dpg.add_group(horizontal=True)
+        dpg.move_item("automationbpmText", parent=automationbpmGroup)
+        dpg.move_item("automationbpmValue", parent=automationbpmGroup)
+
+        # time signature
+        dpg.add_text("Sig:", tag="automationSigText")
+        dpg.add_input_text( default_value="4",  tag="automationTimeSigValue", width=100, indent=50)
+        automationSigGroup = dpg.add_group(horizontal=True)
+        dpg.move_item("automationSigText", parent=automationSigGroup)
+        dpg.move_item("automationTimeSigValue", parent=automationSigGroup)
+
+        # BPM
+        dpg.add_text("Increase BPM:", tag="automationIncreaseBPMText")
+        dpg.add_input_text( default_value="10",  tag="automationIncreaseBPMValue", width=100, indent=100)
+        automationIncreaseBPMGroup = dpg.add_group(horizontal=True)
+        dpg.move_item("automationIncreaseBPMText", parent=automationIncreaseBPMGroup)
+        dpg.move_item("automationIncreaseBPMValue", parent=automationIncreaseBPMGroup)
+
+
+        # Every X bars
+        dpg.add_text("Every X bars:", tag="automationIncreaseBarsText")
+        dpg.add_input_text( default_value="4",  tag="automationIncreaseBarsValue", width=100, indent=100)
+        automationIncreaseBarsPMGroup = dpg.add_group(horizontal=True)
+        dpg.move_item("automationIncreaseBarsText", parent=automationIncreaseBarsPMGroup)
+        dpg.move_item("automationIncreaseBarsValue", parent=automationIncreaseBarsPMGroup)
+
+        # start / stop buttons
+        dpg.add_button(label="Start", callback=startAutomation, tag="startAutomationButton")
+        dpg.add_button(label="Stop", callback=stopAutomation, tag="stopAutomationButton")   
+        buttonAutomationGroup = dpg.add_group(horizontal=True)
+        dpg.move_item("startAutomationButton", parent=buttonAutomationGroup)
+        dpg.move_item("stopAutomationButton", parent=buttonAutomationGroup)
+
+
+
 dpg.create_viewport(title='pyMetronome', height=600, width=300)
  
 dpg.setup_dearpygui()
@@ -254,10 +384,10 @@ while dpg.is_dearpygui_running():
             
             if metronomeCount % metronomeTimeSig == 0:
                 #debugLog("Strong beep")
-                strongBeat.play()
+                playsound.playsound(resource_path("strong_beat.wav"), block=False)
             else:
                 #debugLog("weak beep")
-                weakBeat.play()
+                playsound.playsound(resource_path("weak_beat.wav"), block=False)
             #debugLog("beep:" + str(now))
             last = get_time_ms()
             
@@ -266,7 +396,6 @@ while dpg.is_dearpygui_running():
 
 
     #Schedule metronome
-    
     if scheduleMetronomeRunning == True:
         #debugLog("current row: " + str(currentSchedule))
         finished = False
@@ -305,7 +434,8 @@ while dpg.is_dearpygui_running():
         except:
             #debugLog("Ran out of lines, ending")
             stopSchedule()
-           
+            
+            
 
         if timeVal == "":
             #debugLog("empty time, stopping")
@@ -315,29 +445,30 @@ while dpg.is_dearpygui_running():
         if sigVal == "": # set sig to default
             sigVal = 4
 
-        gap = now - last
-        #debugLog("now:" + str(now))
-        if gap > scheduleMetronomeInterval: # BEEP !
-            #strongBeat.play()
-            try:
-                #set active column green
-                dpg.highlight_table_cell(metro_table_id, currentSchedule, 3, [0, 150, 0, 100])
-                #unset prevoius active column
-                if currentSchedule > 0:
-                    dpg.highlight_table_cell(metro_table_id, currentSchedule-1, 3, [0, 0, 0, 0])
-                    dpg.set_value("tableActive"+str(currentSchedule-1),"")
+        if scheduleMetronomeRunning:       
+            gap = now - last
+            #debugLog("now:" + str(now))
+            if gap > scheduleMetronomeInterval: # BEEP !
+                #strongBeat.play()
+                try:
+                    #set active column green
+                    dpg.highlight_table_cell(metro_table_id, currentSchedule, 3, [0, 150, 0, 100])
+                    #unset prevoius active column
+                    if currentSchedule > 0:
+                        dpg.highlight_table_cell(metro_table_id, currentSchedule-1, 3, [0, 0, 0, 0])
+                        dpg.set_value("tableActive"+str(currentSchedule-1),"")
 
-                if metronomeCount % int(sigVal) == 0:
-                    strongBeat.play()
-                else:
-                    #debugLog("weak beep")
-                    weakBeat.play()
-                #debugLog("beep:" + str(now))
-                last = get_time_ms()
-                
-                metronomeCount = metronomeCount + 1
-            except:
-                stopSchedule()
+                    if metronomeCount % int(sigVal) == 0:
+                        playsound.playsound(resource_path("strong_beat.wav"), block=False)
+                    else:
+                        #debugLog("weak beep")
+                        playsound.playsound(resource_path("weak_beat.wav"), block=False)
+                    #debugLog("beep:" + str(now))
+                    last = get_time_ms()
+                    
+                    metronomeCount = metronomeCount + 1
+                except:
+                    stopSchedule()
         try:
             if now - currentTimerStart > int(timeVal)*1000:
                 currentSchedule = currentSchedule + 1
@@ -345,6 +476,45 @@ while dpg.is_dearpygui_running():
         except:
             stopSchedule()
 
+
+
+    #automationMetronomeRunning, metronomeCount, metronomeTimeSig, timerStart, metronomeBPMincrease, metronomeBPMIncreaseBars, metronomeBPM, metronomeBars
+    if automationMetronomeRunning:
+        metronomeBPM = int(dpg.get_value("automationbpmValue"))
+        metronomeInterval = int((60/metronomeBPM)*1000)
+
+        #debugLog("bPm:" + str(metronomeBPM) + " - int: " + str(metronomeInterval/1000))
+        
+        # check if interval has passed
+        now = get_time_ms()
+        #debugLog("interval: " + str(metronomeInterval) + " - bar count: " + str(metronomeBars) + " - metrocount: " + str(metronomeCount))
+              
+        gap = now - last
+        #debugLog("now:" + str(now))
+
+        if gap > metronomeInterval: # BEEP !
+
+            if metronomeCount % metronomeTimeSig == 0:
+                #debugLog("Strong beep")
+                playsound.playsound(resource_path("strong_beat.wav"), block=False)
+                if metronomeCount > 0:
+                    if (metronomeBars > 0) and (metronomeBars % metronomeBPMIncreaseBars == 0):
+                        #debugLog("increasing BPM at bar " + str(metronomeBars) )
+                        metronomeBPM += metronomeBPMincrease
+                        dpg.configure_item("automationbpmValue", default_value=metronomeBPM)
+
+                    #debugLog("adding a bar: " + str(metronomeBars))
+                
+                metronomeBars += 1
+
+            else:
+                #debugLog("weak beep")                
+                playsound.playsound(resource_path("weak_beat.wav"), block=False)
+
+            #debugLog("beep:" + str(now))
+            last = get_time_ms()
+            
+            metronomeCount += 1
 
     dpg.render_dearpygui_frame()
 
